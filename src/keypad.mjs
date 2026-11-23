@@ -45,6 +45,8 @@ let infoTimeout = null;
 let busy = false;
 // Raised by STBY: what other keys still have to send is no longer wanted.
 let generation = 0;
+// STBY requests still on their way; other keys wait for them.
+let standbyPending = 0;
 
 function current(path) {
   const v = values[path];
@@ -219,8 +221,13 @@ function showInfo(text) {
 
 let autoOpenWrites = 0;
 
-async function loadAutoOpen() {
+// Shows the stored setting; `write`, when given, is the change that failed,
+// and the stored value only counts if no later change was made meanwhile.
+async function loadAutoOpen(write) {
   const saved = await client.state.get(['autoOpen'], settingsScope(client)).catch(() => ({}));
+  if (write !== undefined && write !== autoOpenWrites) {
+    return;
+  }
   autoOpen = saved.autoOpen === true;
   render();
 }
@@ -236,7 +243,7 @@ async function setAutoOpen(value) {
   } catch {
     showInfo('Could not save the setting');
     if (write === autoOpenWrites) {
-      await loadAutoOpen();
+      await loadAutoOpen(write);
     }
   }
 }
@@ -258,6 +265,11 @@ async function command(cmd) {
   if (cmd === 'closeMenu') {
     return;
   }
+  if (cmd === 'standby') {
+    // Whatever another key still had to send is unwanted from now on, even
+    // when STBY itself cannot be sent.
+    generation += 1;
+  }
   const info = pilot.status === 'ok' ? pilot.info : null;
   if (!info) {
     showInfo(pilot.status === 'login' ? 'Log in to Signal K to steer' : 'No pilot');
@@ -272,14 +284,18 @@ async function command(cmd) {
   // send (an engage after a mode, say). Other keys go one at a time: a second
   // press while one is on its way would otherwise race it.
   if (cmd === 'standby') {
-    generation += 1;
-    const failure = await pilot.send(requests);
-    if (failure) {
-      showInfo(failure);
+    standbyPending += 1;
+    try {
+      const failure = await pilot.send(requests);
+      if (failure) {
+        showInfo(failure);
+      }
+    } finally {
+      standbyPending -= 1;
     }
     return;
   }
-  if (busy) {
+  if (busy || standbyPending > 0) {
     return;
   }
   busy = true;
