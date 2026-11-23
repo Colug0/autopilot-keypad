@@ -32,8 +32,16 @@ const NAMES = {
   route: { letter: 'N', name: 'Nav' },
   nav: { letter: 'N', name: 'Nav' },
   track: { letter: 'N', name: 'Nav' },
-  dodge: { letter: 'D', name: 'Dodge' }
+  dodge: { letter: 'D', name: 'Dodge' },
+  'off-line': { letter: '', name: 'Off-line' }
 };
+
+// The state the API gives a pilot it cannot reach.
+export const OFFLINE = 'off-line';
+
+function reachable(info) {
+  return !!info && info.state !== OFFLINE;
+}
 
 const HEADING_KEYS = ['auto', 'compass', 'heading'];
 const WIND_KEYS = ['wind'];
@@ -78,6 +86,9 @@ export function modeKey(info) {
   if (!info) {
     return undefined;
   }
+  if (info.state === OFFLINE) {
+    return OFFLINE;
+  }
   if (info.mode === 'dodge') {
     return 'dodge';
   }
@@ -117,7 +128,7 @@ function steerBy(info, key) {
 
 // The mode a key selects, or undefined when the pilot has none for it.
 export function keyMode(info, key) {
-  if (!info) {
+  if (!reachable(info)) {
     return undefined;
   }
   const list = choices(info);
@@ -131,6 +142,9 @@ export function keyMode(info, key) {
 }
 
 function actionAvailable(info, id) {
+  if (!reachable(info)) {
+    return false;
+  }
   if (info && Array.isArray(info.availableActions)) {
     return info.availableActions.includes(id);
   }
@@ -140,7 +154,7 @@ function actionAvailable(info, id) {
 
 export function available(info) {
   return {
-    auto: keyMode(info, 'auto') !== undefined || (!!info && choices(info).length === 0),
+    auto: keyMode(info, 'auto') !== undefined || (reachable(info) && choices(info).length === 0),
     wind: keyMode(info, 'wind') !== undefined,
     dodge: actionAvailable(info, 'dodge'),
     tack: actionAvailable(info, 'tack'),
@@ -151,7 +165,7 @@ export function available(info) {
 // The requests a key sends, as paths below the pilot. An empty list means the
 // pilot cannot do it.
 export function requestsFor(info, cmd) {
-  if (!info) {
+  if (!reachable(info)) {
     return [];
   }
   if (cmd === 'standby') {

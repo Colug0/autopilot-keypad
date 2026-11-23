@@ -67,6 +67,14 @@ test('no pilot', () => {
   assert.equal(modeKey({ state: null, mode: null, engaged: false, options: {} }), undefined);
 });
 
+test('a pilot it cannot reach', () => {
+  const gone = { ...simrad('standby'), state: 'off-line' };
+  assert.equal(modeKey(gone), 'off-line');
+  assert.deepEqual(requestsFor(gone, 'auto'), []);
+  assert.deepEqual(requestsFor(gone, 'standby'), []);
+  assert.deepEqual(available(gone), { auto: false, wind: false, dodge: false, tack: false, gybe: false });
+});
+
 test('a pilot without modes engages with AUTO', () => {
   const bare = { state: 'off', mode: null, engaged: false, options: { states: [{ name: 'on', engaged: true }, { name: 'off', engaged: false }], modes: [] } };
   assert.equal(available(bare).auto, true);

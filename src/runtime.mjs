@@ -79,9 +79,15 @@ async function wantsAutoOpen() {
   return saved.autoOpen === true;
 }
 
-await client.subscribe([TOGGLE_TOPIC], () => {
-  toggle().catch((err) => console.warn('autopilot keypad: toggle failed', err));
-});
+// Window changes run one after the other, so each sees what the one before
+// left; a failed one does not hold up the next.
+let queue = Promise.resolve();
+function queued(task, what) {
+  queue = queue.then(task).catch((err) => console.warn('autopilot keypad: ' + what + ' failed', err));
+  return queue;
+}
+
+await client.subscribe([TOGGLE_TOPIC], () => queued(toggle, 'toggle'));
 await client.subscribe(['window.state', 'window.closed'], (name, params) => {
   if (name === 'window.closed') {
     keypadWindow().then((w) => decorate(!!(w && w.visible))).catch(() => {});
@@ -104,9 +110,13 @@ const pilot = new Pilot(client, {
     pilotId = p.id;
     engaged = now;
     if (before === false && now) {
-      wantsAutoOpen()
-        .then((yes) => (yes ? show() : undefined))
-        .catch((err) => console.warn('autopilot keypad: could not open', err));
+      const id = p.id;
+      const stillEngaged = () => pilot.id === id && pilot.status === 'ok' && !!pilot.info && pilot.info.engaged === true;
+      queued(async () => {
+        if (await wantsAutoOpen() && stillEngaged()) {
+          await show();
+        }
+      }, 'opening');
     }
   }
 });

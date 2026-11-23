@@ -16,7 +16,7 @@
 // Adapted from the keypad design of signalk-autopilot's webapp.
 
 import { connectExtension } from 'signalk-plotterext-bus/extension';
-import { ALARMS, available, choices, modeKey, nameOf, requestsFor, rudderView, valuesFor } from './model.mjs';
+import { ALARMS, OFFLINE, available, choices, modeKey, nameOf, requestsFor, rudderView, valuesFor } from './model.mjs';
 import { Pilot } from './pilot.mjs';
 import { settingsScope } from './settings.mjs';
 
@@ -43,6 +43,8 @@ let client = null;
 let autoOpen = false;
 let infoTimeout = null;
 let busy = false;
+// Raised by STBY: what other keys still have to send is no longer wanted.
+let generation = 0;
 
 function current(path) {
   const v = values[path];
@@ -102,7 +104,7 @@ function renderRudder() {
 const STATUS_TEXT = { searching: 'Looking for pilot', none: 'No pilot', login: 'Log in to Signal K', error: 'No pilot' };
 
 function renderModebar(info, key) {
-  el.modebar.className = 'modebar' + (key === undefined ? ' offline' : key === 'standby' ? ' standby' : '');
+  el.modebar.className = 'modebar' + (key === undefined || key === OFFLINE ? ' offline' : key === 'standby' ? ' standby' : '');
   if (key === undefined) {
     el.modeLetter.textContent = '';
     el.modeName.textContent = pilot.status === 'ok' ? 'No pilot' : STATUS_TEXT[pilot.status];
@@ -171,15 +173,28 @@ function renderAlarm() {
   }
 }
 
+// The title the window shows, and one on its way to the host.
 let shownTitle = null;
+let pendingTitle = null;
 
-// The window title names the pilot, as there may be more than one.
+// The window title names the pilot, as there may be more than one. A title
+// the host refused is tried again on the next render.
 function renderTitle() {
   const title = pilot.id ? 'Autopilot · ' + pilot.id : 'Autopilot';
-  if (title !== shownTitle && client.context.kind === 'window') {
-    shownTitle = title;
-    client.call('ui.updateWindow', { title }).catch(() => {});
+  if (title === shownTitle || title === pendingTitle || client.context.kind !== 'window') {
+    return;
   }
+  pendingTitle = title;
+  client.call('ui.updateWindow', { title })
+    .then(() => {
+      shownTitle = title;
+    })
+    .catch(() => {})
+    .finally(() => {
+      if (pendingTitle === title) {
+        pendingTitle = null;
+      }
+    });
 }
 
 function render() {
@@ -202,17 +217,34 @@ function showInfo(text) {
   infoTimeout = setTimeout(() => el.info.classList.remove('on'), 4000);
 }
 
+let autoOpenWrites = 0;
+
+async function loadAutoOpen() {
+  const saved = await client.state.get(['autoOpen'], settingsScope(client)).catch(() => ({}));
+  autoOpen = saved.autoOpen === true;
+  render();
+}
+
+// Shows the new value at once; if it cannot be saved, shows what is stored,
+// unless a later change has been made meanwhile.
 async function setAutoOpen(value) {
+  const write = ++autoOpenWrites;
   autoOpen = value;
   render();
   try {
     await client.state.set({ autoOpen: value }, settingsScope(client));
   } catch {
     showInfo('Could not save the setting');
+    if (write === autoOpenWrites) {
+      await loadAutoOpen();
+    }
   }
 }
 
 async function command(cmd) {
+  if (!pilot) {
+    return;
+  }
   if (cmd === 'menu') {
     el.menu.classList.add('open');
     render();
@@ -236,14 +268,24 @@ async function command(cmd) {
     showInfo('The pilot cannot do that');
     return;
   }
-  // One command at a time: a second key press while one is on its way would
-  // otherwise race it.
+  // STBY always goes out at once, and stops what another key still had to
+  // send (an engage after a mode, say). Other keys go one at a time: a second
+  // press while one is on its way would otherwise race it.
+  if (cmd === 'standby') {
+    generation += 1;
+    const failure = await pilot.send(requests);
+    if (failure) {
+      showInfo(failure);
+    }
+    return;
+  }
   if (busy) {
     return;
   }
   busy = true;
+  const mine = generation;
   try {
-    const failure = await pilot.send(requests);
+    const failure = await pilot.send(requests, () => generation === mine);
     if (failure) {
       showInfo(failure);
     }
@@ -279,16 +321,22 @@ async function start() {
   });
 
   client = await connectExtension();
-  pilot = new Pilot(client, { poll: POLL, onChange: render });
+  // The pilot's own target paths may still hold what the previous pilot
+  // reported; they say nothing about a new one.
+  let pilotId = null;
+  const onChange = (p) => {
+    if (p.id !== pilotId) {
+      pilotId = p.id;
+      PATHS.filter((path) => path.startsWith('steering.autopilot.target.')).forEach((path) => delete values[path]);
+    }
+    render();
+  };
+  const created = new Pilot(client, { poll: POLL, onChange });
+  pilot = created;
   render();
 
-  const saved = await client.state.get(['autoOpen'], settingsScope(client)).catch(() => ({}));
-  autoOpen = saved.autoOpen === true;
-  await client.subscribe(['state.changed'], async () => {
-    const now = await client.state.get(['autoOpen'], settingsScope(client)).catch(() => ({}));
-    autoOpen = now.autoOpen === true;
-    render();
-  });
+  await loadAutoOpen();
+  await client.subscribe(['state.changed'], () => loadAutoOpen());
 
   await client.signalk.subscribe(PATHS, (ev) => {
     values[ev.path] = { value: ev.value, time: Date.now() };

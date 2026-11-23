@@ -57,7 +57,12 @@ export class Pilot {
     // 'searching', 'none' (no pilot), 'login' (not allowed to read), 'error', 'ok'
     this.status = 'searching';
     this.lookup = 0;
+    this.discovering = false;
     this.timer = null;
+    // Which delta last set each attribute, so a read that started before it
+    // does not undo it.
+    this.deltas = 0;
+    this.setBy = {};
   }
 
   async start() {
@@ -77,6 +82,7 @@ export class Pilot {
       return;
     }
     const attrib = ev.path.substring('steering.autopilot.'.length);
+    this.setBy[attrib] = ++this.deltas;
     this.info = { ...this.info, [attrib]: ev.value };
     this.onChange(this);
   }
@@ -93,8 +99,11 @@ export class Pilot {
     this.onChange(this);
   }
 
+  // Looks up the default pilot. While it runs, no read of the old pilot may
+  // overtake it.
   async discover() {
     const lookup = ++this.lookup;
+    this.discovering = true;
     try {
       const id = pickPilot(await request('GET', API));
       if (lookup !== this.lookup) {
@@ -103,32 +112,53 @@ export class Pilot {
       if (id !== this.id) {
         this.id = id;
         this.info = null;
+        this.setBy = {};
       }
       if (id === null) {
+        this.discovering = false;
         this.setStatus('none');
         this.schedule(this.poll || RETRY_DELAY * 5);
         return;
       }
-      await this.refresh(lookup);
+      await this.read(lookup);
     } catch (err) {
       if (lookup === this.lookup) {
         this.fail(err);
       }
+    } finally {
+      if (lookup === this.lookup) {
+        this.discovering = false;
+      }
     }
   }
 
-  async refresh(lookup = ++this.lookup) {
-    if (this.id === null) {
-      return this.discover();
+  // Reads the pilot again, unless it is being looked up.
+  refresh() {
+    if (this.discovering) {
+      return undefined;
     }
+    return this.id === null ? this.discover() : this.read(++this.lookup);
+  }
+
+  async read(lookup) {
+    const since = this.deltas;
     try {
       const info = await request('GET', API + '/' + encodeURIComponent(this.id));
       if (lookup !== this.lookup) {
-        return undefined;
+        return;
       }
-      // The deltas' list of actions outlives a read of the pilot.
-      const availableActions = this.info ? this.info.availableActions : undefined;
-      this.info = { ...info, availableActions };
+      // What a delta set while the read was on its way is newer than the read.
+      // The list of available actions only comes as a delta; without a newer
+      // one, the read's options say what is available.
+      const next = { ...info, availableActions: undefined };
+      if (this.info) {
+        Object.keys(this.setBy).forEach((attrib) => {
+          if (this.setBy[attrib] > since) {
+            next[attrib] = this.info[attrib];
+          }
+        });
+      }
+      this.info = next;
       this.status = 'ok';
       this.onChange(this);
       this.schedule(this.poll);
@@ -142,7 +172,6 @@ export class Pilot {
         this.fail(err);
       }
     }
-    return undefined;
   }
 
   fail(err) {
@@ -150,19 +179,23 @@ export class Pilot {
     this.schedule(RETRY_DELAY);
   }
 
-  // Sends the requests one after the other; resolves to an error text or null.
-  async send(requests) {
+  // Sends the requests one after the other, as long as `current()` says they
+  // are still wanted; resolves to an error text or null.
+  async send(requests, current = () => true) {
     if (this.id === null || requests.length === 0) {
       return requests.length === 0 ? null : 'No pilot';
     }
     const base = API + '/' + encodeURIComponent(this.id) + '/';
     try {
       for (const r of requests) {
+        if (!current()) {
+          return null;
+        }
         await request(r.method, base + r.path, r.body);
       }
       return null;
     } catch (err) {
-      return failureText(err.status, err.message);
+      return current() ? failureText(err.status, err.message) : null;
     } finally {
       this.refresh();
     }
