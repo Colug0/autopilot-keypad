@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Autopilot</title>
+  <style>
+    :root {
+      --bg: #1e2226;
+      --text: #f2f4f5;
+      --muted: #b4bcc3;
+      --green: #2e9e3c;
+      --red: #d32f2f;
+      --port: #e53935;
+      --stbd: #43a047;
+      --key: #565d64;
+      --key-dark: #2f353a;
+      --track: #3a4046;
+      --alarm: #e0a100;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* Night mode: the same look, dimmed. */
+    html.night body { filter: brightness(0.55); }
+
+    button { font: inherit; }
+
+    .ap {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(6px, 2.5vh, 12px);
+      padding: clamp(6px, 3vw, 12px);
+    }
+
+    .display { position: relative; flex: 1; display: flex; flex-direction: column; gap: clamp(4px, 2vh, 10px); min-height: 0; }
+
+    .modebar {
+      display: flex; align-items: center; gap: 12px; flex: none;
+      background: var(--green); border-radius: 6px; padding: 0 12px;
+      height: clamp(36px, 13vh, 56px);
+    }
+    .modebar .letter { font-size: clamp(22px, 9vh, 34px); font-weight: 800; }
+    .modebar .name {
+      font-size: clamp(16px, 6vh, 24px); font-weight: 800; letter-spacing: .5px;
+      text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .modebar.standby { background: var(--key-dark); }
+    .modebar.standby .letter { color: var(--red); }
+    .modebar.offline { background: var(--key-dark); color: var(--muted); }
+
+    .alarm {
+      display: none; align-items: center; gap: 8px; flex: none; border-radius: 4px;
+      background: var(--alarm); color: #111; font-size: 14px; font-weight: 700; padding: 5px 10px;
+    }
+    .alarm.on { display: flex; }
+
+    .info {
+      display: none; padding: 5px 10px; background: var(--key-dark); border-radius: 4px;
+      font-size: 13px; flex: none;
+    }
+    .info.on { display: block; }
+
+    .values { flex: 1; display: flex; justify-content: space-around; align-items: center; min-height: 0; }
+    .val { text-align: center; }
+    .val .label { color: var(--muted); font-size: clamp(12px, 4vh, 16px); }
+    .val .num {
+      font-size: clamp(26px, min(13vw, 15vh), 72px); font-weight: 700; line-height: 1.05;
+      display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums;
+    }
+    .val .num .unit { font-size: .45em; font-weight: 400; color: var(--muted); align-self: flex-start; margin-top: .15em; }
+    .tri {
+      width: 0; height: 0;
+      border-top: .22em solid transparent; border-bottom: .22em solid transparent;
+    }
+    .tri.port { border-right: .32em solid var(--port); }
+    .tri.stbd { border-left: .32em solid var(--stbd); }
+
+    .rudder { flex: none; text-align: center; font-size: clamp(12px, 4vh, 15px); color: var(--muted); }
+    .rudder .track { position: relative; height: 8px; margin: 4px 6% 0; background: var(--track); border-radius: 4px; }
+    .rudder .bar { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+    .rudder .bar.stbd { left: 50%; background: var(--stbd); }
+    .rudder .bar.port { right: 50%; background: var(--port); }
+    .rudder .mid { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--muted); }
+    .rudder[hidden] { display: none; }
+
+    /* Mode menu, over the display */
+    .menu {
+      position: absolute; inset: 0; background: var(--bg); display: none;
+      flex-direction: column; gap: 6px; overflow-y: auto; z-index: 1;
+    }
+    .menu.open { display: flex; }
+    .menu .back, .menu .option {
+      background: var(--key-dark); color: var(--text); border: 0; min-height: 38px; flex: none;
+      font-size: 14px; text-align: left; padding: 0 12px; border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center;
+    }
+    .menu .option .switch { margin-left: auto; padding-left: 8px; font-weight: 700; color: var(--muted); }
+    .menu .option.on .switch { color: var(--stbd); }
+    .menu .item {
+      display: flex; align-items: center; gap: 12px; min-height: 40px; flex: none; background: var(--green);
+      border: 0; color: var(--text); border-radius: 6px; cursor: pointer; padding: 0 12px;
+      font-weight: 800; text-transform: uppercase;
+    }
+    .menu .item .letter { font-size: 20px; min-width: 1.6em; text-align: left; }
+    .menu .item .name { font-size: 15px; }
+    .menu .item.on { outline: 3px solid var(--text); outline-offset: -3px; }
+    .menu .empty { color: var(--muted); padding: 6px 12px; font-size: 14px; }
+
+    /* Keys */
+    .keys { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(4px, 2vw, 8px); }
+    .key {
+      background: var(--key); color: #fff; border: 0; border-radius: 6px;
+      height: clamp(34px, 11vh, 56px); font-size: clamp(13px, 4.5vh, 18px); font-weight: 700;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      user-select: none; touch-action: manipulation; padding: 0 2px; letter-spacing: .3px;
+    }
+    .key:active { filter: brightness(1.35); }
+    .key:disabled { opacity: .35; cursor: default; filter: none; }
+    .key.port { background: var(--red); }
+    .key.stbd { background: var(--stbd); }
+    .key.on { box-shadow: inset 0 0 0 3px var(--text); }
+    .key.wide { grid-column: span 4; background: var(--key-dark); }
+    .key.half { grid-column: span 2; background: var(--key-dark); }
+    .key[hidden] { display: none; }
+  </style>
+</head>
+
+<body>
+  <div class="ap">
+    <section class="display">
+      <div class="modebar offline" id="modebar">
+        <span class="letter" id="modeLetter"></span>
+        <span class="name" id="modeName">No pilot</span>
+      </div>
+      <div class="alarm" id="alarm" role="alert"><span id="alarmText"></span></div>
+      <div class="info" id="info" role="status" aria-live="polite"></div>
+      <div class="values" id="values"></div>
+      <div class="rudder" id="rudder" hidden>
+        <div id="rudderText"></div>
+        <div class="track"><div class="bar" id="rudderBar"></div><div class="mid"></div></div>
+      </div>
+      <div class="menu" id="menu">
+        <button class="back" type="button" data-cmd="closeMenu">&lsaquo; Back</button>
+        <div id="menuItems" style="display: contents"></div>
+        <button class="option" type="button" data-cmd="autoOpen" id="autoOpen">
+          Open when engaged (this device)<span class="switch" id="autoOpenState">Off</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="keys">
+      <button class="key port" type="button" data-cmd="-10" aria-label="10 degrees to port">&lt;10</button>
+      <button class="key port" type="button" data-cmd="-1" aria-label="1 degree to port">&lt;1</button>
+      <button class="key stbd" type="button" data-cmd="+1" aria-label="1 degree to starboard">1&gt;</button>
+      <button class="key stbd" type="button" data-cmd="+10" aria-label="10 degrees to starboard">10&gt;</button>
+      <button class="key" type="button" data-cmd="standby" id="keyStby">STBY</button>
+      <button class="key" type="button" data-cmd="auto" id="keyAuto">AUTO</button>
+      <button class="key" type="button" data-cmd="wind" id="keyWind">WIND</button>
+      <button class="key" type="button" data-cmd="menu">MODE</button>
+      <!-- Only shown when the pilot offers them. -->
+      <button class="key half" type="button" data-cmd="tack:port" id="keyTackPort" hidden>&lt; TACK</button>
+      <button class="key half" type="button" data-cmd="tack:starboard" id="keyTackStbd" hidden>TACK &gt;</button>
+      <button class="key half" type="button" data-cmd="gybe:port" id="keyGybePort" hidden>&lt; GYBE</button>
+      <button class="key half" type="button" data-cmd="gybe:starboard" id="keyGybeStbd" hidden>GYBE &gt;</button>
+      <button class="key wide" type="button" data-cmd="dodge" id="keyDodge" hidden>DODGE</button>
+    </section>
+  </div>
+  <script type="module" src="keypad.js"></script>
+</body>
+
+</html>

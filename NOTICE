@@ -1,0 +1,9 @@
+autopilot-keypad
+
+The keypad design and parts of its code are adapted from the keypad design of
+signalk-autopilot's webapp (https://github.com/SignalK/signalk-autopilot),
+licensed under the Apache License, Version 2.0.
+
+The pages in public/ bundle signalk-plotterext-bus
+(https://github.com/joelkoz/signalk-plotterext-bus), Copyright (c) Joel
+Kozikowski, licensed under the MIT License.

@@ -1,0 +1,34 @@
+{
+  "name": "autopilot-keypad",
+  "version": "0.1.0",
+  "description": "Autopilot keypad for chart plotters: a plotter extension (Freeboard-SK 3.5 and later) that steers any Signal K Autopilot API pilot with keys laid out like a pilot keypad",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "public/",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "prepack": "node scripts/build.mjs"
+  },
+  "keywords": [
+    "signalk-node-server-plugin",
+    "signalk-category-plotter-extensions",
+    "signalk-category-chart-plotters",
+    "autopilot",
+    "freeboard-sk"
+  ],
+  "author": "Colug0",
+  "license": "Apache-2.0",
+  "signalk": {
+    "displayName": "Autopilot keypad"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "signalk-plotterext-bus": "^0.27.0"
+  }
+}
