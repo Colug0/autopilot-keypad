@@ -1,6 +1,6 @@
 {
   "name": "autopilot-keypad",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Autopilot keypad for Signal K: a webapp and a chart plotter extension (Freeboard-SK 3.5 and later) that steer any Autopilot API pilot with keys laid out like a pilot keypad",
   "main": "index.js",
   "files": [
