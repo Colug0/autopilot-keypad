@@ -127,12 +127,13 @@ export class SpeedAverage {
     }
   }
 
+  // Undefined when no sample is newer than the window.
   value(now = Date.now()) {
     this.prune(now);
-    if (this.samples.length === 0) {
+    const from = now - this.windowMs;
+    if (this.samples.length === 0 || this.samples[this.samples.length - 1].time < from) {
       return undefined;
     }
-    const from = now - this.windowMs;
     let sum = 0;
     let span = 0;
     this.samples.forEach((s, i) => {

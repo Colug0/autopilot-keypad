@@ -68,8 +68,11 @@ test('speed average over a window, weighted by time', () => {
     avg.add(10, t0 + 10 * 60000 + i * 100);
   }
   assert.ok(avg.value(t0 + 10 * 60000 + 1000) < 6.1);
-  // Old samples drop out of the window.
-  assert.equal(avg.value(t0 + 30 * 60000), 10);
+  // A sample before the window still counts until the next one inside it.
+  avg.add(8, t0 + 21 * 60000);
+  assert.ok(avg.value(t0 + 22 * 60000) > 8 && avg.value(t0 + 22 * 60000) < 10);
+  // With nothing newer than the window, there is no average.
+  assert.equal(avg.value(t0 + 40 * 60000), undefined);
 });
 
 test('the name of the next point', () => {

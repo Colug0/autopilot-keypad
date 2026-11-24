@@ -152,12 +152,17 @@ export function startKeypad(root, host) {
 
   // ---- settings ----
 
+  // Each edit counts, so that a load that started before it leaves it alone.
+  const edits = {};
+  let editCount = 0;
+
   function setPref(key, value) {
     prefs[key] = value;
+    edits[key] = ++editCount;
     if (key.startsWith('speed') && course) {
       course.setSpeed(speedSetting()).catch(() => {});
     }
-    return Promise.resolve(host.store.save(key, value));
+    return Promise.resolve().then(() => host.store.save(key, value));
   }
 
   function speedSetting() {
@@ -244,7 +249,7 @@ export function startKeypad(root, host) {
       input.value = s.get();
       return;
     }
-    await Promise.resolve(s.set(value)).catch(() => showInfo('Could not save the setting'));
+    await Promise.resolve().then(() => s.set(value)).catch(() => showInfo('Could not save the setting'));
     render();
   }
 
@@ -274,8 +279,8 @@ export function startKeypad(root, host) {
       return;
     }
     const i = s.choices.findIndex((c) => c.value === s.get());
-    await Promise.resolve(s.set(s.choices[(i + 1) % s.choices.length].value))
-      .catch(() => showInfo('Could not change the setting'));
+    const next = s.choices[(i + 1) % s.choices.length].value;
+    await Promise.resolve().then(() => s.set(next)).catch(() => showInfo('Could not change the setting'));
     render();
   }
 
@@ -605,9 +610,14 @@ export function startKeypad(root, host) {
   });
 
   async function loadPrefs() {
+    const started = editCount;
     await Promise.all(Object.keys(DEFAULTS).map(async (key) => {
-      const value = await Promise.resolve(host.store.load(key, DEFAULTS[key])).catch(() => DEFAULTS[key]);
-      prefs[key] = typeof value === typeof DEFAULTS[key] ? value : DEFAULTS[key];
+      const value = await Promise.resolve()
+        .then(() => host.store.load(key, DEFAULTS[key]))
+        .catch(() => DEFAULTS[key]);
+      if ((edits[key] || 0) <= started) {
+        prefs[key] = typeof value === typeof DEFAULTS[key] ? value : DEFAULTS[key];
+      }
     }));
   }
 

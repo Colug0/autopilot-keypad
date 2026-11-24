@@ -45,6 +45,10 @@ export class Course {
     this.nextPoint = null;
     this.name = '';
     this.lookup = 0;
+    // How often each of activeRoute and nextPoint came as a delta, so that a
+    // read that started earlier does not undo them.
+    this.deltas = { activeRoute: 0, nextPoint: 0 };
+    this.subscribedPath = null;
     this.average = new SpeedAverage(15 * 60000);
     this.speedSetting = { source: 'average', minutes: 15, knots: 5, path: SOG };
     this.pathSpeed = undefined;
@@ -57,23 +61,37 @@ export class Course {
     });
     await this.host.subscribe(['navigation.course.activeRoute', 'navigation.course.nextPoint'], (ev) => {
       const key = ev.path === 'navigation.course.activeRoute' ? 'activeRoute' : 'nextPoint';
-      const before = JSON.stringify(this[key]);
-      this[key] = ev.value || null;
-      if (JSON.stringify(this[key]) !== before) {
-        this.lookUpName();
-        this.onChange();
-      }
+      this.deltas[key] += 1;
+      this.setCourse(key, ev.value || null);
     });
     await this.host.subscribe([SOG], (ev) => this.average.add(ev.value));
     // The course as it stands now, before the first deltas arrive.
+    const before = { ...this.deltas };
     try {
       const course = await getJson('/signalk/v2/api/vessels/self/navigation/course');
-      this.activeRoute = course.activeRoute || null;
-      this.nextPoint = course.nextPoint || null;
-      this.lookUpName();
+      ['activeRoute', 'nextPoint'].forEach((key) => {
+        if (this.deltas[key] === before[key]) {
+          this.setCourse(key, course[key] || null);
+        }
+      });
     } catch {
       // Deltas will tell.
     }
+    this.onChange();
+  }
+
+  // A new destination makes the calculations for the old one meaningless
+  // until the server has worked them out again.
+  setCourse(key, value) {
+    const before = JSON.stringify(this[key]);
+    this[key] = value;
+    if (JSON.stringify(value) === before) {
+      return;
+    }
+    if (key === 'nextPoint') {
+      Object.values(PATHS).forEach((path) => delete this.values[path]);
+    }
+    this.lookUpName();
     this.onChange();
   }
 
@@ -117,20 +135,25 @@ export class Course {
 
   // { source: 'average' | 'fixed' | 'path', minutes, knots, path }
   async setSpeed(setting) {
-    const pathBefore = this.speedSetting.source === 'path' ? this.speedSetting.path : null;
     this.speedSetting = setting;
     this.average.setWindow(Math.max(1, setting.minutes) * 60000);
     const pathNow = setting.source === 'path' ? setting.path : null;
-    if (pathNow !== pathBefore) {
+    // Compared with the path actually subscribed, so that a failed subscription
+    // is tried again on the next call.
+    if (pathNow !== this.subscribedPath) {
       if (this.unsubscribePath) {
-        await Promise.resolve(this.unsubscribePath()).catch(() => {});
+        await Promise.resolve().then(() => this.unsubscribePath()).catch(() => {});
         this.unsubscribePath = null;
       }
+      this.subscribedPath = null;
       this.pathSpeed = undefined;
       if (pathNow) {
         this.unsubscribePath = await this.host.subscribe([pathNow], (ev) => {
-          this.pathSpeed = { value: ev.value, time: Date.now() };
+          if (ev.path === this.subscribedPath) {
+            this.pathSpeed = { value: ev.value, time: Date.now() };
+          }
         });
+        this.subscribedPath = pathNow;
       }
     }
   }
