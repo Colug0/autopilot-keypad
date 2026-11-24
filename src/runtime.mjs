@@ -100,7 +100,7 @@ await client.subscribe(['window.state', 'window.closed'], (name, params) => {
 // already engaged when the plotter starts does not count.
 let engaged = null;
 let pilotId = null;
-const pilot = new Pilot(client, {
+const pilot = new Pilot({ subscribe: (paths, handler) => client.signalk.subscribe(paths, handler) }, {
   onChange: (p) => {
     if (p.status !== 'ok' || !p.info) {
       return;

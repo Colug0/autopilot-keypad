@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  available, choices, modeKey, pickPilot, requestsFor, rudderView, valuesFor, windSide, headingText, failureText
+  available, choices, isNight, modeKey, nextNightMode, pickPilot, requestsFor, rudderView, valuesFor, windSide, headingText, failureText
 } from '../src/model.mjs';
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -137,4 +137,31 @@ test('helpers', () => {
   assert.equal(pickPilot({}), null);
   assert.equal(failureText(403), 'Log in to Signal K to steer');
   assert.equal(failureText(500, 'Device busy'), 'Device busy [500]');
+});
+
+test('night mode setting', () => {
+  assert.equal(nextNightMode('auto'), 'day');
+  assert.equal(nextNightMode('day'), 'night');
+  assert.equal(nextNightMode('night'), 'auto');
+  assert.equal(nextNightMode('something'), 'auto');
+  assert.equal(isNight('auto', 'night'), true);
+  assert.equal(isNight('auto', 'day'), false);
+  assert.equal(isNight('auto', null), false);
+  assert.equal(isNight('day', 'night'), false);
+  assert.equal(isNight('night', 'day'), true);
+});
+
+test('stream hands each value to the handlers of its path', async () => {
+  const { Stream } = await import('../src/stream.mjs');
+  const stream = new Stream({ protocol: 'https:', host: 'boat.test:4430' });
+  assert.equal(stream.url, 'wss://boat.test:4430/signalk/v1/stream?subscribe=none');
+  stream.connect = () => {};
+  const seen = [];
+  await stream.subscribe(['steering.autopilot.state'], (ev) => seen.push(ev));
+  stream.deliver(JSON.stringify({ updates: [{ $source: 'simrad', timestamp: 't', values: [
+    { path: 'steering.autopilot.state', value: 'auto' },
+    { path: 'navigation.headingTrue', value: 1 }
+  ] }] }));
+  stream.deliver('not json');
+  assert.deepEqual(seen, [{ path: 'steering.autopilot.state', value: 'auto', timestamp: 't', $source: 'simrad' }]);
 });

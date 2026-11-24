@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e2226">
+  <title>Autopilot</title>
+  <link rel="icon" type="image/png" href="icon-72x72.png">
+  <link rel="apple-touch-icon" href="icon-192x192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="keypad.css">
+</head>
+
+<body class="webapp">
+  <header class="header">
+    <span class="title" id="title">Autopilot</span>
+    <a class="login" id="login" href="/admin/#/login" hidden>Log in</a>
+    <svg class="icon" id="nightIcon" viewBox="0 0 24 24" role="img" aria-label="Night mode" hidden>
+      <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>
+    </svg>
+    <svg class="icon" id="wakeIcon" viewBox="0 0 24 24" role="img" aria-label="Screen kept on" hidden>
+      <path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2zM9 20h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z"/>
+    </svg>
+  </header>
+  <div class="ap" id="keypad"></div>
+  <script type="module" src="app.js"></script>
+</body>
+
+</html>

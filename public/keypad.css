@@ -1,0 +1,179 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* The keypad, shared by the plotter window (keypad.html) and the webapp (index.html). */
+
+:root {
+  --bg: #1e2226;
+  --text: #f2f4f5;
+  --muted: #b4bcc3;
+  --green: #2e9e3c;
+  --red: #d32f2f;
+  --port: #e53935;
+  --stbd: #43a047;
+  --key: #565d64;
+  --key-dark: #2f353a;
+  --step: #3a4046;
+  --arrow-port: #ff5a52;
+  --arrow-stbd: #4cd964;
+  --track: #3a4046;
+  --alarm: #e0a100;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+
+/* Night mode: the same look, dimmed. */
+html.night body { filter: brightness(0.55); }
+
+button { font: inherit; }
+
+.ap {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 2.5vh, 12px);
+  padding: clamp(6px, 3vw, 12px);
+}
+
+.display { position: relative; flex: 1; display: flex; flex-direction: column; gap: clamp(4px, 2vh, 10px); min-height: 0; }
+
+.modebar {
+  display: flex; align-items: center; gap: 12px; flex: none;
+  background: var(--green); border-radius: 6px; padding: 0 12px;
+  height: clamp(36px, 13vh, 56px);
+}
+.modebar .letter { font-size: clamp(22px, 9vh, 34px); font-weight: 800; }
+.modebar .name {
+  font-size: clamp(16px, 6vh, 24px); font-weight: 800; letter-spacing: .5px;
+  text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.modebar.standby { background: var(--key-dark); }
+.modebar.standby .letter { color: var(--red); }
+.modebar.offline { background: var(--key-dark); color: var(--muted); }
+
+.alarm {
+  display: none; align-items: center; gap: 8px; flex: none; border-radius: 4px;
+  background: var(--alarm); color: #111; font-size: 14px; font-weight: 700; padding: 5px 10px;
+}
+.alarm.on { display: flex; }
+
+.info {
+  display: none; padding: 5px 10px; background: var(--key-dark); border-radius: 4px;
+  font-size: 13px; flex: none;
+}
+.info.on { display: block; }
+
+.values { flex: 1; display: flex; justify-content: space-around; align-items: center; min-height: 0; }
+.val { text-align: center; }
+.val .label { color: var(--muted); font-size: clamp(12px, 4vh, 16px); }
+.val .num {
+  font-size: clamp(26px, min(13vw, 15vh), 72px); font-weight: 700; line-height: 1.05;
+  display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums;
+}
+.val .num .unit { font-size: .45em; font-weight: 400; color: var(--muted); align-self: flex-start; margin-top: .15em; }
+.tri {
+  width: 0; height: 0;
+  border-top: .22em solid transparent; border-bottom: .22em solid transparent;
+}
+.tri.port { border-right: .32em solid var(--port); }
+.tri.stbd { border-left: .32em solid var(--stbd); }
+
+.rudder { flex: none; text-align: center; font-size: clamp(12px, 4vh, 15px); color: var(--muted); }
+.rudder .track { position: relative; height: 8px; margin: 4px 6% 0; background: var(--track); border-radius: 4px; }
+.rudder .bar { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.rudder .bar.stbd { left: 50%; background: var(--stbd); }
+.rudder .bar.port { right: 50%; background: var(--port); }
+.rudder .mid { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--muted); }
+.rudder[hidden] { display: none; }
+
+/* Mode menu, over the display */
+.menu {
+  position: absolute; inset: 0; background: var(--bg); display: none;
+  flex-direction: column; gap: 6px; overflow-y: auto; z-index: 1;
+}
+.menu.open { display: flex; }
+.menu .back, .menu .option {
+  background: var(--key-dark); color: var(--text); border: 0; min-height: 38px; flex: none;
+  font-size: 14px; text-align: left; padding: 0 12px; border-radius: 6px; cursor: pointer;
+  display: flex; align-items: center;
+}
+.menu .option .switch { margin-left: auto; padding-left: 8px; font-weight: 700; color: var(--muted); }
+.menu .option.on .switch { color: var(--stbd); }
+.menu .item {
+  display: flex; align-items: center; gap: 12px; min-height: 40px; flex: none; background: var(--green);
+  border: 0; color: var(--text); border-radius: 6px; cursor: pointer; padding: 0 12px;
+  font-weight: 800; text-transform: uppercase;
+}
+.menu .item .letter { font-size: 20px; min-width: 1.6em; text-align: left; }
+.menu .item .name { font-size: 15px; }
+.menu .item.on { outline: 3px solid var(--text); outline-offset: -3px; }
+.menu .empty { color: var(--muted); padding: 6px 12px; font-size: 14px; }
+
+/* Keys */
+.keys { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(4px, 2vw, 8px); }
+.key {
+  background: var(--key); color: #fff; border: 0; border-radius: 6px;
+  height: clamp(34px, 11vh, 56px); font-size: clamp(13px, 4.5vh, 18px); font-weight: 700;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  user-select: none; touch-action: manipulation; padding: 0 2px; letter-spacing: .3px;
+}
+.key:active { filter: brightness(1.35); }
+.key:disabled { opacity: .35; cursor: default; filter: none; }
+/* Step keys stay grey; only their arrows show the side. STBY stands out. */
+.key.step { background: var(--step); }
+.key .p { color: var(--arrow-port); }
+.key .s { color: var(--arrow-stbd); }
+.key.stby { background: var(--red); }
+.key.on { box-shadow: inset 0 0 0 3px var(--text); }
+.key.wide { grid-column: span 4; background: var(--key-dark); }
+.key.half { grid-column: span 2; background: var(--key-dark); }
+.key[hidden] { display: none; }
+
+/* The webapp: a header of its own, and on a wide screen the keys beside the display. */
+body.webapp { display: flex; flex-direction: column; }
+body.webapp .ap { flex: 1; height: auto; min-height: 0; }
+.header {
+  flex: none; display: flex; align-items: center; gap: 10px;
+  padding: 6px clamp(6px, 3vw, 12px) 0; color: var(--muted); font-size: 14px;
+}
+.header .title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header .icon { width: 18px; height: 18px; fill: var(--muted); }
+.header .icon[hidden], .header .login[hidden] { display: none; }
+.header .login { color: var(--text); background: var(--key-dark); border-radius: 6px; padding: 3px 10px; text-decoration: none; }
+
+@media (orientation: landscape) and (min-width: 600px) {
+  body.webapp .ap { flex-direction: row; }
+  body.webapp .display { flex: 1.1; }
+  body.webapp .keys { flex: 1; grid-template-columns: repeat(2, 1fr); align-content: center; }
+  body.webapp .key { height: clamp(40px, 12vh, 72px); font-size: clamp(15px, 4.5vh, 24px); }
+  body.webapp .key.wide, body.webapp .key.half { grid-column: span 1; }
+  body.webapp .key.wide { grid-column: span 2; }
+  /* Port keys on the left, starboard keys on the right, as on a pilot keypad. */
+  body.webapp .key[data-cmd="-10"] { order: 1; }
+  body.webapp .key[data-cmd="+10"] { order: 2; }
+  body.webapp .key[data-cmd="-1"] { order: 3; }
+  body.webapp .key[data-cmd="+1"] { order: 4; }
+  body.webapp .key:not(.step) { order: 5; }
+}

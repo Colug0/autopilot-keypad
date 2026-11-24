@@ -302,3 +302,15 @@ export function failureText(status, message) {
   }
   return (message || 'Command failed') + (status ? ' [' + status + ']' : '');
 }
+
+// The webapp's night mode setting: auto (follow the server's
+// environment.mode), day or night, in the order a tap steps through them.
+const NIGHT_MODES = ['auto', 'day', 'night'];
+
+export function nextNightMode(mode) {
+  return NIGHT_MODES[(NIGHT_MODES.indexOf(mode) + 1) % NIGHT_MODES.length];
+}
+
+export function isNight(mode, environmentMode) {
+  return mode === 'night' || (mode === 'auto' && environmentMode === 'night');
+}

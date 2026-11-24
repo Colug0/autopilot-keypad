@@ -1,8 +1,8 @@
-// Bundles the window and the background runtime, with the bus library, into public/.
+// Bundles the plotter window, the background runtime and the webapp into public/.
 import { build } from 'esbuild';
 
 await build({
-  entryPoints: { keypad: 'src/keypad.mjs', runtime: 'src/runtime.mjs' },
+  entryPoints: { keypad: 'src/keypad.mjs', runtime: 'src/runtime.mjs', app: 'src/app.mjs' },
   outdir: 'public',
   bundle: true,
   format: 'esm',

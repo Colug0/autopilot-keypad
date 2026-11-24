@@ -43,13 +43,14 @@ async function request(method, path, body) {
   return answer;
 }
 
-// Follows the Autopilot API's default pilot. The host relays its deltas, but
-// throttles each path whatever its source, so a pilot's own raw state on the
-// same path can crowd out the API's; the pilot is therefore also read back
-// now and then, and after every command.
+// Follows the Autopilot API's default pilot. `host.subscribe(paths, handler)`
+// delivers Signal K values as { path, value, $source }. A plotter relays the
+// API's deltas, but throttles each path whatever its source, so a pilot's own
+// raw state on the same path can crowd out the API's; the pilot is therefore
+// also read back now and then, and after every command.
 export class Pilot {
-  constructor(client, { poll = 0, onChange = () => {} } = {}) {
-    this.client = client;
+  constructor(host, { poll = 0, onChange = () => {} } = {}) {
+    this.host = host;
     this.poll = poll;
     this.onChange = onChange;
     this.id = null;
@@ -67,7 +68,7 @@ export class Pilot {
 
   async start() {
     const paths = ATTRIBS.map((a) => 'steering.autopilot.' + a).concat('steering.autopilot.defaultPilot');
-    await this.client.signalk.subscribe(paths, (ev) => this.delta(ev));
+    await this.host.subscribe(paths, (ev) => this.delta(ev));
     await this.discover();
   }
 
