@@ -163,3 +163,17 @@ test('stream hands each value to the handlers of its path', async () => {
   stream.deliver('not json');
   assert.deepEqual(seen, [{ path: 'steering.autopilot.state', value: 'auto', timestamp: 't', $source: 'simrad' }]);
 });
+
+test('the third key: the chosen mode, or Wind, or none', async () => {
+  const { thirdKeyMode, keyLabel } = await import('../src/model.mjs');
+  assert.equal(thirdKeyMode(simrad('auto'), 'route'), 'route');
+  assert.equal(thirdKeyMode(simrad('auto'), 'wind'), 'wind');
+  assert.equal(thirdKeyMode(simrad('auto'), 'gps'), 'wind');
+  assert.equal(thirdKeyMode(pypilot(true), 'gps'), 'gps');
+  const noWind = { ...simrad('auto'), options: { states: [{ name: 'standby', engaged: false }, { name: 'auto', engaged: true }] } };
+  assert.equal(thirdKeyMode(noWind, 'wind'), undefined);
+  assert.equal(thirdKeyMode(null, 'wind'), undefined);
+  assert.equal(keyLabel('route'), 'NAV');
+  assert.equal(keyLabel('noDrift'), 'ND');
+  assert.equal(keyLabel('somethinglong'), 'SOMETH');
+});

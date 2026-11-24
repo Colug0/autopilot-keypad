@@ -164,3 +164,46 @@ export function pointName(course, route, waypoint) {
   }
   return (waypoint && waypoint.name) || 'Waypoint';
 }
+
+// The distance in metres between two [longitude, latitude] points along a
+// great circle.
+export function legDistance(a, b) {
+  const rad = Math.PI / 180;
+  const R = 6371000;
+  const dLat = (b[1] - a[1]) * rad;
+  const dLon = (b[0] - a[0]) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+// The points still ahead on a route, from the next one: name, distance from
+// the boat along the route, time to go and arrival. `toNext` is the distance
+// to the next point as the server works it out.
+export function waypointList(route, active, toNext, speed, now = new Date()) {
+  const coords = route && route.feature && route.feature.geometry && route.feature.geometry.coordinates;
+  if (!Array.isArray(coords) || !active || !num(active.pointIndex)) {
+    return [];
+  }
+  const meta = (route.feature.properties && route.feature.properties.coordinatesMeta) || [];
+  const order = coords.map((c, i) => i);
+  if (active.reverse) {
+    order.reverse();
+  }
+  const rows = [];
+  let distance = toNext;
+  for (let i = active.pointIndex; i < order.length; i++) {
+    const at = order[i];
+    if (i > active.pointIndex && num(distance)) {
+      distance += legDistance(coords[order[i - 1]], coords[at]);
+    }
+    const seconds = timeToGo(distance, speed);
+    rows.push({
+      index: i,
+      name: (meta[at] && meta[at].name) || 'WPT ' + (i + 1),
+      distance: distanceText(distance),
+      ttg: durationText(seconds),
+      eta: etaText(seconds, now)
+    });
+  }
+  return rows;
+}

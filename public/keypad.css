@@ -210,3 +210,17 @@ body.webapp .ap { flex: 1; height: auto; min-height: 0; }
 .menu .option .field.text { width: 60%; text-align: left; }
 .menu .option .unitText { padding-left: 6px; color: var(--muted); min-width: 2em; }
 .menu .option[hidden] { display: none; }
+
+/* The waypoint list, over the display. */
+#wpList .back { justify-content: flex-start; }
+#wpList .wpRoute { margin-left: auto; color: var(--muted); padding-left: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wpRows { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+.wpRow {
+  display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 6px; align-items: center; flex: none;
+  background: var(--key-dark); border-radius: 6px; padding: 6px 10px; font-size: clamp(12px, 3.8vh, 16px);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.wpRow .name { text-align: left; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wpRow.next { box-shadow: inset 3px 0 0 var(--green); }
+.wpKeys { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.key { -webkit-touch-callout: none; }

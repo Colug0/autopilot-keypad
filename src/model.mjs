@@ -318,3 +318,24 @@ export function failureText(status, message) {
 export function isNight(mode, environmentMode) {
   return mode === 'night' || (mode === 'auto' && environmentMode === 'night');
 }
+
+// The third key steers by a mode chosen in the settings, Wind to start with.
+// Its label is short enough for a key.
+const KEY_LABELS = {
+  auto: 'AUTO', compass: 'AUTO', heading: 'AUTO', noDrift: 'ND', wind: 'WIND', 'true wind': 'TWA',
+  gps: 'GPS', route: 'NAV', nav: 'NAV', track: 'NAV'
+};
+
+export function keyLabel(mode) {
+  return KEY_LABELS[mode] || String(mode).toUpperCase().slice(0, 6);
+}
+
+// The mode the third key selects: the chosen one when the pilot has it,
+// otherwise Wind when it has that, otherwise none.
+export function thirdKeyMode(info, chosen) {
+  const list = info ? choices(info) : [];
+  if (list.includes(chosen)) {
+    return chosen;
+  }
+  return list.includes('wind') ? 'wind' : undefined;
+}

@@ -22,10 +22,12 @@ What it shows and does:
   the next point and the end of the route. In a mode that follows a route the
   bearing to the next point (CTS) takes the place of the target. **NEXT WPT**
   appears while a route is active: in a mode that follows the route it asks the
-  pilot (when the pilot offers it), otherwise the server's course goes on.
+  pilot (when the pilot offers it), otherwise the server's course goes on. A
+  long press on it opens the waypoint list: the points ahead with distance
+  along the route, time to go and arrival, and **PREV WPT** and **NEXT WPT**.
 - Keys laid out like a pilot keypad: `<10 <1 1> 10>` with red (port) and green
-  (starboard) arrows, a red **STBY**, **AUTO**, **WIND** and **MODE** for the
-  rest. **DODGE**, **TACK** and **GYBE** appear when the pilot says it can do
+  (starboard) arrows, a red **STBY**, **AUTO**, a third key (**WIND** to start
+  with) and **MODE** for the rest. **DODGE**, **TACK** and **GYBE** appear when the pilot says it can do
   them.
 
 It talks to the pilot through the Signal K Autopilot API, so it works with any
@@ -39,6 +41,8 @@ default pilot.
 
 **Settings** are under MODE → *Settings*, kept for each device:
 
+- *Third key*: the mode the key beside AUTO selects, from the modes the pilot
+  offers (Wind to start with, Nav, …).
 - *Show navigation*: on or off.
 - *XTE limit*: the cross track error at the edge of the highway (0.1 nm to
   start with).

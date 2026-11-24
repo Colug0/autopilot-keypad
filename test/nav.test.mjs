@@ -126,3 +126,24 @@ test('going on to the next point of the route asks the Course API', async () => 
     globalThis.fetch = saved;
   }
 });
+
+test('the points ahead on a route, with distances along it', async () => {
+  const { waypointList, legDistance } = await import('../src/nav.mjs');
+  // About 1 nm apart along the equator.
+  const step = 1 / 60;
+  const route = { feature: {
+    geometry: { coordinates: [[0, 0], [step, 0], [2 * step, 0], [3 * step, 0]] },
+    properties: { coordinatesMeta: [{ name: 'A' }, { name: 'B' }, { name: '' }, { name: 'D' }] }
+  } };
+  assert.ok(Math.abs(legDistance([0, 0], [step, 0]) - NM) < 5);
+  const now = new Date(2026, 10, 24, 12, 0, 0);
+  const rows = waypointList(route, { pointIndex: 1 }, 0.5 * NM, 6 * KNOT, now);
+  assert.deepEqual(rows.map((r) => r.name), ['B', 'WPT 3', 'D']);
+  assert.deepEqual(rows.map((r) => r.distance.text), ['0.50', '1.50', '2.50']);
+  assert.equal(rows[0].ttg, '5:00');
+  assert.equal(rows[2].eta, '12:25');
+  // Reversed, the points are counted in the order they are sailed.
+  const back = waypointList(route, { pointIndex: 1, reverse: true }, NM, 6 * KNOT, now);
+  assert.deepEqual(back.map((r) => r.name), ['WPT 2', 'B', 'A']);
+  assert.deepEqual(waypointList(null, { pointIndex: 0 }, 1, 1), []);
+});

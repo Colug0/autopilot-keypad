@@ -45,6 +45,8 @@ export class Course {
     this.activeRoute = null;
     this.nextPoint = null;
     this.name = '';
+    // The active route as the resources API gives it, for the waypoint list.
+    this.route = null;
     this.lookup = 0;
     // How often each of activeRoute and nextPoint came as a delta, so that a
     // read that started earlier does not undo them.
@@ -129,6 +131,7 @@ export class Course {
       // Named by number instead.
     }
     if (lookup === this.lookup) {
+      this.route = route;
       this.name = pointName(course, route, waypoint);
       this.onChange();
     }
@@ -170,15 +173,15 @@ export class Course {
     }
   }
 
-  // Goes on to the next point of the active route, through the server's
-  // Course API; resolves to an error text or null.
-  async goToNextPoint() {
+  // Goes on to the next point of the active route (or back, with -1),
+  // through the server's Course API; resolves to an error text or null.
+  async goToNextPoint(step = 1) {
     try {
       const res = await fetch('/signalk/v2/api/vessels/self/navigation/course/activeRoute/nextPoint', {
         method: 'PUT',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: 1 })
+        body: JSON.stringify({ value: step })
       });
       if (res.ok) {
         return null;

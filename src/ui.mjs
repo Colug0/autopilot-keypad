@@ -28,9 +28,10 @@
 // Adapted from the keypad design of signalk-autopilot's webapp.
 
 import {
-  ALARMS, OFFLINE, available, choices, headingText, isNavMode, modeKey, nameOf, requestsFor, rudderView, valuesFor
+  ALARMS, OFFLINE, available, choices, headingText, isNavMode, keyLabel, modeKey, nameOf, requestsFor, rudderView,
+  thirdKeyMode, valuesFor
 } from './model.mjs';
-import { highwayPosition, navView } from './nav.mjs';
+import { highwayPosition, navView, waypointList } from './nav.mjs';
 import { Pilot } from './pilot.mjs';
 import { Course } from './course.mjs';
 
@@ -57,8 +58,12 @@ const DEFAULTS = {
   speedMinutes: 15,
   speedKnots: 5,
   speedPath: 'navigation.speedOverGround',
-  navTarget: 'wpt'
+  navTarget: 'wpt',
+  thirdKey: 'wind'
 };
+
+// How long a press must last to open the waypoint list.
+const LONG_PRESS = 600;
 
 const MARKUP = `
   <section class="display">
@@ -96,6 +101,14 @@ const MARKUP = `
       </div>
       <div id="menuSettings" style="display: none"></div>
     </div>
+    <div class="menu" id="wpList">
+      <button class="back" type="button" data-cmd="closeList">&lsaquo; Back<span class="wpRoute" id="wpRoute"></span></button>
+      <div class="wpRows" id="wpRows"></div>
+      <div class="wpKeys">
+        <button class="key step" type="button" data-cmd="prevPoint">&lsaquo; PREV WPT</button>
+        <button class="key step" type="button" data-cmd="nextPoint">NEXT WPT &rsaquo;</button>
+      </div>
+    </div>
   </section>
   <section class="keys">
     <button class="key step" type="button" data-cmd="-10" aria-label="10 degrees to port"><span class="p">&lt;</span>10</button>
@@ -104,19 +117,21 @@ const MARKUP = `
     <button class="key step" type="button" data-cmd="+10" aria-label="10 degrees to starboard">10<span class="s">&gt;</span></button>
     <button class="key stby" type="button" data-cmd="standby" id="keyStby">STBY</button>
     <button class="key" type="button" data-cmd="auto" id="keyAuto">AUTO</button>
-    <button class="key" type="button" data-cmd="wind" id="keyWind">WIND</button>
+    <button class="key" type="button" data-cmd="third" id="keyThird">WIND</button>
     <button class="key" type="button" data-cmd="menu">MODE</button>
     <button class="key half" type="button" data-cmd="tack:port" id="keyTackPort" hidden><span class="p">&lt;</span>&nbsp;TACK</button>
     <button class="key half" type="button" data-cmd="tack:starboard" id="keyTackStbd" hidden>TACK&nbsp;<span class="s">&gt;</span></button>
     <button class="key half" type="button" data-cmd="gybe:port" id="keyGybePort" hidden><span class="p">&lt;</span>&nbsp;GYBE</button>
     <button class="key half" type="button" data-cmd="gybe:starboard" id="keyGybeStbd" hidden>GYBE&nbsp;<span class="s">&gt;</span></button>
     <button class="key wide" type="button" data-cmd="dodge" id="keyDodge" hidden>DODGE</button>
-    <button class="key wide" type="button" data-cmd="nextPoint" id="keyNext" hidden>NEXT WPT &rsaquo;</button>
+    <button class="key wide" type="button" data-cmd="nextPoint" id="keyNext" hidden
+      title="Hold for the waypoint list">NEXT WPT &rsaquo;</button>
   </section>`;
 
 const IDS = ['modebar', 'modeLetter', 'modeName', 'alarm', 'alarmText', 'info', 'values', 'nav', 'navPoint',
   'navCount', 'navBoat', 'navXte', 'navDistanceLabel', 'navDistance', 'navTtg', 'navEta', 'rudder', 'rudderText',
-  'rudderBar', 'menu', 'menuModes', 'menuItems', 'menuSettings', 'keyStby', 'keyAuto', 'keyWind', 'keyDodge',
+  'rudderBar', 'menu', 'menuModes', 'menuItems', 'menuSettings', 'wpList', 'wpRoute', 'wpRows', 'keyStby',
+  'keyAuto', 'keyThird', 'keyDodge',
   'keyNext', 'keyTackPort', 'keyTackStbd', 'keyGybePort', 'keyGybeStbd'];
 
 const STATUS_TEXT = { searching: 'Looking for pilot', none: 'No pilot', login: 'Log in to Signal K', error: 'No pilot' };
@@ -171,8 +186,16 @@ export function startKeypad(root, host) {
 
   const pref = (key) => ({ get: () => prefs[key], set: (v) => setPref(key, v) });
 
+  // The modes the pilot offers, for the third key.
+  const modeChoices = () => {
+    const list = pilot && pilot.status === 'ok' && pilot.info ? choices(pilot.info) : [];
+    const modes = list.length > 0 ? list : [prefs.thirdKey];
+    return modes.map((m) => ({ value: m, text: nameOf(m).name }));
+  };
+
   const SETTINGS = [
     ...(host.settings || []),
+    { id: 'thirdKey', label: 'Third key', type: 'choice', choices: modeChoices, ...pref('thirdKey') },
     { id: 'showNav', label: 'Show navigation', type: 'choice', choices: ON_OFF, ...pref('showNav') },
     { id: 'xteLimit', label: 'XTE limit', type: 'number', unit: 'nm', min: 0.01, step: 0.01, ...pref('xteLimit') },
     {
@@ -261,7 +284,8 @@ export function startKeypad(root, host) {
       const row = el.menuSettings.children[i];
       row.hidden = s.visible ? !s.visible() : false;
       if (s.type === 'choice') {
-        const choice = s.choices.find((c) => c.value === s.get()) || s.choices[0];
+        const list = choicesOf(s);
+        const choice = list.find((c) => c.value === s.get()) || list[0];
         row.classList.toggle('on', choice.value !== false && choice.value !== 'off');
         row.lastChild.textContent = choice.text;
       } else {
@@ -273,13 +297,18 @@ export function startKeypad(root, host) {
     });
   }
 
+  function choicesOf(s) {
+    return typeof s.choices === 'function' ? s.choices() : s.choices;
+  }
+
   async function stepChoice(id) {
     const s = SETTINGS.find((x) => x.id === id);
     if (!s) {
       return;
     }
-    const i = s.choices.findIndex((c) => c.value === s.get());
-    const next = s.choices[(i + 1) % s.choices.length].value;
+    const list = choicesOf(s);
+    const i = list.findIndex((c) => c.value === s.get());
+    const next = list[(i + 1) % list.length].value;
     await Promise.resolve().then(() => s.set(next)).catch(() => showInfo('Could not change the setting'));
     render();
   }
@@ -398,9 +427,11 @@ export function startKeypad(root, host) {
     }
     const can = available(info);
     el.keyAuto.disabled = !can.auto;
-    el.keyWind.disabled = !can.wind;
     el.keyAuto.classList.toggle('on', key !== undefined && nameOf(key).letter === 'A');
-    el.keyWind.classList.toggle('on', key === 'wind');
+    const third = thirdKeyMode(info, prefs.thirdKey);
+    el.keyThird.disabled = !third;
+    el.keyThird.textContent = keyLabel(third || prefs.thirdKey);
+    el.keyThird.classList.toggle('on', third !== undefined && key === third);
     el.keyStby.classList.toggle('on', key === 'standby');
     el.keyDodge.hidden = !can.dodge;
     el.keyDodge.classList.toggle('on', key === 'dodge');
@@ -488,6 +519,43 @@ export function startKeypad(root, host) {
       });
   }
 
+  // The waypoint list: the points ahead on the active route, over the display.
+  function renderList() {
+    if (!el.wpList.classList.contains('open')) {
+      return;
+    }
+    if (!course || !course.active || !course.activeRoute) {
+      el.wpList.classList.remove('open');
+      return;
+    }
+    el.wpRoute.textContent = (course.activeRoute.name || 'Route') + (course.pointCount ? ' · ' + course.pointCount : '');
+    const rows = waypointList(course.route, course.activeRoute, course.current('distance'), course.speed());
+    el.wpRows.replaceChildren(...rows.map((r, i) => {
+      const row = document.createElement('div');
+      row.className = 'wpRow' + (i === 0 ? ' next' : '');
+      const cells = [[r.name, 'name'], [r.distance.text + ' ' + r.distance.unit, ''], [r.ttg, ''], [r.eta, '']];
+      row.append(...cells.map(([text, cls]) => {
+        const cell = document.createElement('span');
+        cell.className = cls;
+        cell.textContent = text;
+        return cell;
+      }));
+      return row;
+    }));
+    if (rows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Loading the route';
+      el.wpRows.replaceChildren(empty);
+    }
+  }
+
+  function openList() {
+    closeMenu();
+    el.wpList.classList.add('open');
+    render();
+  }
+
   function render() {
     if (!pilot) {
       return;
@@ -498,6 +566,7 @@ export function startKeypad(root, host) {
     renderModebar(info, key);
     el.values.replaceChildren(...blocksFor(key, info).map(valueBlock));
     renderNav();
+    renderList();
     renderRudder();
     if (el.menu.classList.contains('open')) {
       renderMenu(info, key);
@@ -526,16 +595,16 @@ export function startKeypad(root, host) {
   // it steers for it at once; otherwise the server's course goes on. Each
   // press moves one point on, so a second press while one is on its way is
   // dropped rather than skipping a point.
-  async function nextPoint() {
+  async function nextPoint(step = 1) {
     if (busy || standbyPending > 0) {
       return;
     }
     busy = true;
     try {
       const info = pilot.status === 'ok' ? pilot.info : null;
-      const failure = info && isNavMode(modeKey(info)) && available(info).nextPoint
+      const failure = step === 1 && info && isNavMode(modeKey(info)) && available(info).nextPoint
         ? await pilot.send(requestsFor(info, 'nextPoint'))
-        : await course.goToNextPoint();
+        : await course.goToNextPoint(step);
       if (failure) {
         showInfo(failure);
       }
@@ -579,11 +648,18 @@ export function startKeypad(root, host) {
       render();
       return;
     }
-    closeMenu();
-    if (cmd === 'nextPoint') {
-      await nextPoint();
+    if (cmd === 'closeList') {
+      el.wpList.classList.remove('open');
       return;
     }
+    if (cmd === 'nextPoint' || cmd === 'prevPoint') {
+      closeMenu();
+      await nextPoint(cmd === 'nextPoint' ? 1 : -1);
+      render();
+      return;
+    }
+    closeMenu();
+    el.wpList.classList.remove('open');
     if (cmd === 'standby') {
       // Whatever another key still had to send is unwanted from now on, even
       // when STBY itself cannot be sent.
@@ -594,7 +670,13 @@ export function startKeypad(root, host) {
       showInfo(pilot.status === 'login' ? 'Log in to Signal K to steer' : 'No pilot');
       return;
     }
-    const requests = requestsFor(info, cmd);
+    // The third key steers by the mode chosen for it in the settings.
+    let request = cmd;
+    if (cmd === 'third') {
+      const third = thirdKeyMode(info, prefs.thirdKey);
+      request = third ? 'mode:' + third : '';
+    }
+    const requests = request ? requestsFor(info, request) : [];
     if (requests.length === 0) {
       showInfo('The pilot cannot do that');
       return;
@@ -629,11 +711,43 @@ export function startKeypad(root, host) {
     }
   }
 
+  // A long press on NEXT WPT opens the waypoint list instead.
+  let pressTimer = null;
+  let longPressed = false;
+
+  root.addEventListener('pointerdown', (event) => {
+    if (event.target.closest('#keyNext')) {
+      longPressed = false;
+      clearTimeout(pressTimer);
+      pressTimer = setTimeout(() => {
+        longPressed = true;
+        openList();
+      }, LONG_PRESS);
+    }
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((type) => {
+    root.addEventListener(type, () => clearTimeout(pressTimer), true);
+  });
+  // A touch screen's long press may also come as a context menu.
+  root.addEventListener('contextmenu', (event) => {
+    if (event.target.closest('#keyNext')) {
+      event.preventDefault();
+      clearTimeout(pressTimer);
+      longPressed = true;
+      openList();
+    }
+  });
+
   root.addEventListener('click', (event) => {
     const button = event.target.closest('[data-cmd]');
-    if (button && !button.disabled) {
-      command(button.dataset.cmd);
+    if (!button || button.disabled) {
+      return;
     }
+    if (button.id === 'keyNext' && longPressed) {
+      longPressed = false;
+      return;
+    }
+    command(button.dataset.cmd);
   });
 
   async function loadPrefs() {
