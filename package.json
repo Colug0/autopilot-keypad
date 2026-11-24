@@ -6,9 +6,11 @@
   "files": [
     "index.js",
     "public/",
+    "docs/screenshots/",
     "LICENSE",
     "NOTICE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -25,9 +27,25 @@
   ],
   "author": "Colug0",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Colug0/autopilot-keypad.git"
+  },
+  "homepage": "https://github.com/Colug0/autopilot-keypad#readme",
+  "bugs": {
+    "url": "https://github.com/Colug0/autopilot-keypad/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "signalk": {
     "displayName": "Autopilot keypad",
-    "appIcon": "./public/icon-72x72.png"
+    "appIcon": "./icon-72x72.png",
+    "screenshots": [
+      "./docs/screenshots/webapp-wind.jpg",
+      "./docs/screenshots/freeboard-window.png",
+      "./docs/screenshots/webapp-waypoints.jpg"
+    ]
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
