@@ -158,7 +158,8 @@ export function available(info) {
     wind: keyMode(info, 'wind') !== undefined,
     dodge: actionAvailable(info, 'dodge'),
     tack: actionAvailable(info, 'tack'),
-    gybe: actionAvailable(info, 'gybe')
+    gybe: actionAvailable(info, 'gybe'),
+    nextPoint: actionAvailable(info, 'courseNextPoint')
   };
 }
 
@@ -187,6 +188,9 @@ export function requestsFor(info, cmd) {
   if (cmd === 'dodge') {
     return info.mode === 'dodge' ? [{ method: 'DELETE', path: 'dodge' }] : [post('dodge')];
   }
+  if (cmd === 'nextPoint') {
+    return [post('courseNextPoint')];
+  }
   const turn = /^(tack|gybe):(port|starboard)$/.exec(cmd);
   if (turn) {
     return [post(turn[1] + '/' + turn[2])];
@@ -200,6 +204,13 @@ export function requestsFor(info, cmd) {
       : [put('target/adjust', step, 'deg')];
   }
   return [];
+}
+
+// The modes that follow a route or a destination.
+const NAV_MODES = ['route', 'nav', 'track'];
+
+export function isNavMode(key) {
+  return NAV_MODES.includes(key);
 }
 
 export function degrees(radians) {
@@ -303,14 +314,7 @@ export function failureText(status, message) {
   return (message || 'Command failed') + (status ? ' [' + status + ']' : '');
 }
 
-// The webapp's night mode setting: auto (follow the server's
-// environment.mode), day or night, in the order a tap steps through them.
-const NIGHT_MODES = ['auto', 'day', 'night'];
-
-export function nextNightMode(mode) {
-  return NIGHT_MODES[(NIGHT_MODES.indexOf(mode) + 1) % NIGHT_MODES.length];
-}
-
+// The webapp's night mode setting: auto follows the server's environment.mode.
 export function isNight(mode, environmentMode) {
   return mode === 'night' || (mode === 'auto' && environmentMode === 'night');
 }

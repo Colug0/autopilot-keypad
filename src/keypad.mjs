@@ -13,8 +13,9 @@
  */
 
 // The keypad in a plotter window: data through the plotter's bus, the title
-// in the window's title bar, night mode from the plotter, and the setting to
-// open the window when the pilot is engaged.
+// in the window's title bar, night mode from the plotter, settings kept by
+// the plotter for this device, and the setting to open the window when the
+// pilot is engaged.
 
 import { connectExtension } from 'signalk-plotterext-bus/extension';
 import { startKeypad } from './ui.mjs';
@@ -57,17 +58,29 @@ async function start() {
   keypad = startKeypad(document.getElementById('keypad'), {
     subscribe: (paths, handler) => client.signalk.subscribe(paths, handler),
     setTitle: (title) => (client.context.kind === 'window' ? client.call('ui.updateWindow', { title }) : undefined),
-    options: [{
+    // This device's settings, kept by the plotter.
+    store: {
+      load: async (key, fallback) => {
+        const saved = await client.state.get([key], settingsScope(client));
+        return saved[key] === undefined ? fallback : saved[key];
+      },
+      save: (key, value) => client.state.set({ [key]: value }, settingsScope(client))
+    },
+    settings: [{
       id: 'autoOpen',
-      label: 'Open when engaged (this device)',
-      value: () => (autoOpen ? 'On' : 'Off'),
-      on: () => autoOpen,
-      toggle: () => setAutoOpen(!autoOpen)
+      label: 'Open when engaged',
+      type: 'choice',
+      choices: [{ value: true, text: 'On' }, { value: false, text: 'Off' }],
+      get: () => autoOpen,
+      set: (value) => setAutoOpen(value)
     }]
   });
 
   await loadAutoOpen();
-  await client.subscribe(['state.changed'], () => loadAutoOpen());
+  await client.subscribe(['state.changed'], async () => {
+    await loadAutoOpen();
+    await keypad.reload();
+  });
 
   // A hidden window comes back as it was left; it should not come back with
   // the mode menu over the display.

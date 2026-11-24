@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  available, choices, isNight, modeKey, nextNightMode, pickPilot, requestsFor, rudderView, valuesFor, windSide, headingText, failureText
+  available, choices, isNight, modeKey, pickPilot, requestsFor, rudderView, valuesFor, windSide, headingText, failureText
 } from '../src/model.mjs';
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -72,7 +72,7 @@ test('a pilot it cannot reach', () => {
   assert.equal(modeKey(gone), 'off-line');
   assert.deepEqual(requestsFor(gone, 'auto'), []);
   assert.deepEqual(requestsFor(gone, 'standby'), []);
-  assert.deepEqual(available(gone), { auto: false, wind: false, dodge: false, tack: false, gybe: false });
+  assert.deepEqual(available(gone), { auto: false, wind: false, dodge: false, tack: false, gybe: false, nextPoint: false });
 });
 
 test('a pilot without modes engages with AUTO', () => {
@@ -94,12 +94,14 @@ test('steps: + is starboard, in degrees, dodge while dodging', () => {
 });
 
 test('actions only when offered', () => {
-  assert.deepEqual(available(simrad('auto')), { auto: true, wind: true, dodge: false, tack: false, gybe: false });
+  assert.deepEqual(available(simrad('auto')), { auto: true, wind: true, dodge: false, tack: false, gybe: false, nextPoint: false });
   assert.equal(available(pypilot(true)).tack, true);
   // The deltas' list wins over the options.
   assert.equal(available({ ...pypilot(true), availableActions: ['dodge'] }).tack, false);
   assert.equal(available({ ...pypilot(true), availableActions: ['dodge'] }).dodge, true);
   assert.deepEqual(requestsFor(pypilot(true), 'tack:port'), [{ method: 'POST', path: 'tack/port' }]);
+  assert.equal(available({ ...simrad('route'), availableActions: ['courseNextPoint'] }).nextPoint, true);
+  assert.deepEqual(requestsFor(simrad('route'), 'nextPoint'), [{ method: 'POST', path: 'courseNextPoint' }]);
 });
 
 test('values per mode', () => {
@@ -140,10 +142,6 @@ test('helpers', () => {
 });
 
 test('night mode setting', () => {
-  assert.equal(nextNightMode('auto'), 'day');
-  assert.equal(nextNightMode('day'), 'night');
-  assert.equal(nextNightMode('night'), 'auto');
-  assert.equal(nextNightMode('something'), 'auto');
   assert.equal(isNight('auto', 'night'), true);
   assert.equal(isNight('auto', 'day'), false);
   assert.equal(isNight('auto', null), false);

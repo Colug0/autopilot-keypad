@@ -32,13 +32,13 @@ const WINDOW = {
     anchor: 'top-right',
     offset: { x: 16, y: 64 },
     width: 300,
-    height: 340,
+    height: 430,
     minWidth: 240,
-    minHeight: 300
+    minHeight: 340
   },
   userClose: 'hide',
   single: true,
-  restoreKey: 'keypad-compact'
+  restoreKey: 'keypad-nav'
 };
 
 async function keypadWindow() {

@@ -18,7 +18,7 @@
 
 import { startKeypad } from './ui.mjs';
 import { Stream } from './stream.mjs';
-import { nextNightMode, isNight } from './model.mjs';
+import { isNight } from './model.mjs';
 
 const STORE = 'autopilot-keypad.';
 
@@ -93,8 +93,6 @@ async function updateWakeLock() {
   show(el.wakeIcon, wakeLock !== null);
 }
 
-const NIGHT_TEXT = { auto: 'Auto', day: 'Day', night: 'Night' };
-
 const keypad = startKeypad(document.getElementById('keypad'), {
   subscribe: (paths, handler) => stream.subscribe(paths, handler),
   setTitle: (title) => {
@@ -104,14 +102,16 @@ const keypad = startKeypad(document.getElementById('keypad'), {
   onRender: (pilot) => {
     el.login.hidden = pilot.status !== 'login';
   },
-  options: [
+  store: { load, save },
+  settings: [
     {
       id: 'night',
       label: 'Night mode',
-      value: () => NIGHT_TEXT[nightMode],
-      on: () => nightMode !== 'day',
-      toggle: () => {
-        nightMode = nextNightMode(nightMode);
+      type: 'choice',
+      choices: [{ value: 'auto', text: 'Auto' }, { value: 'day', text: 'Day' }, { value: 'night', text: 'Night' }],
+      get: () => nightMode,
+      set: (value) => {
+        nightMode = value;
         save('nightMode', nightMode);
         applyNight();
       }
@@ -119,10 +119,13 @@ const keypad = startKeypad(document.getElementById('keypad'), {
     {
       id: 'keepOn',
       label: 'Keep screen on',
-      value: () => ('wakeLock' in navigator ? (keepOn ? 'On' : 'Off') : 'Not available'),
-      on: () => keepOn && 'wakeLock' in navigator,
-      toggle: async () => {
-        keepOn = !keepOn;
+      type: 'choice',
+      choices: 'wakeLock' in navigator
+        ? [{ value: true, text: 'On' }, { value: false, text: 'Off' }]
+        : [{ value: false, text: 'Not available' }],
+      get: () => keepOn && 'wakeLock' in navigator,
+      set: async (value) => {
+        keepOn = value;
         save('keepOn', keepOn);
         await applyWakeLock();
       }
