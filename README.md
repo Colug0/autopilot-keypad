@@ -34,10 +34,13 @@ It talks to the pilot through the Signal K Autopilot API, so it works with any
 pilot provider plugin (signalk-autopilot, pypilot, …): it follows the API's
 default pilot.
 
+![The webapp in wind mode](docs/screenshots/webapp-wind.jpg)
+
 ## Use
 
-1. Install the plugin and enable it.
+1. Install *Autopilot keypad* from the Signal K App Store and enable it.
 2. Steering needs a user with write access to Signal K.
+3. A pilot provider plugin must be running (signalk-autopilot, pypilot, …).
 
 **Settings** are under MODE → *Settings*, kept for each device:
 
