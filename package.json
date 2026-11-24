@@ -25,7 +25,8 @@
   "author": "Colug0",
   "license": "Apache-2.0",
   "signalk": {
-    "displayName": "Autopilot keypad"
+    "displayName": "Autopilot keypad",
+    "appIcon": "./public/icon-72x72.png"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
