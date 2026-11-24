@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 (2026-11-24)
+
+### Bug Fixes
+
+* the app icon where the server looks for it (it showed none)
+* room for the values beside the navigation block in the plotter window
+
 ## 0.3.0 (2026-11-24)
 
 ### Features
