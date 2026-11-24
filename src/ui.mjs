@@ -523,28 +523,24 @@ export function startKeypad(root, host) {
   // ---- keys ----
 
   // A pilot that follows the route goes on to the next point itself, so that
-  // it steers for it at once; otherwise the server's course goes on.
+  // it steers for it at once; otherwise the server's course goes on. Each
+  // press moves one point on, so a second press while one is on its way is
+  // dropped rather than skipping a point.
   async function nextPoint() {
-    const info = pilot.status === 'ok' ? pilot.info : null;
-    const key = modeKey(info);
-    if (info && isNavMode(key) && available(info).nextPoint) {
-      if (busy || standbyPending > 0) {
-        return;
-      }
-      busy = true;
-      try {
-        const failure = await pilot.send(requestsFor(info, 'nextPoint'));
-        if (failure) {
-          showInfo(failure);
-        }
-      } finally {
-        busy = false;
-      }
+    if (busy || standbyPending > 0) {
       return;
     }
-    const failure = await course.goToNextPoint();
-    if (failure) {
-      showInfo(failure);
+    busy = true;
+    try {
+      const info = pilot.status === 'ok' ? pilot.info : null;
+      const failure = info && isNavMode(modeKey(info)) && available(info).nextPoint
+        ? await pilot.send(requestsFor(info, 'nextPoint'))
+        : await course.goToNextPoint();
+      if (failure) {
+        showInfo(failure);
+      }
+    } finally {
+      busy = false;
     }
   }
 
