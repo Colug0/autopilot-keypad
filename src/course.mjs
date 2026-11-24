@@ -16,6 +16,7 @@
 // times are worked out from.
 
 import { KNOT, SpeedAverage, pointName } from './nav.mjs';
+import { failureText } from './model.mjs';
 
 const VALUE_TIMEOUT = 10000;
 const CALC = 'navigation.course.calcValues.';
@@ -166,6 +167,26 @@ export class Course {
         });
         this.subscribedPath = pathNow;
       }
+    }
+  }
+
+  // Goes on to the next point of the active route, through the server's
+  // Course API; resolves to an error text or null.
+  async goToNextPoint() {
+    try {
+      const res = await fetch('/signalk/v2/api/vessels/self/navigation/course/activeRoute/nextPoint', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: 1 })
+      });
+      if (res.ok) {
+        return null;
+      }
+      const answer = await res.json().catch(() => ({}));
+      return failureText(res.status, answer.message);
+    } catch (err) {
+      return failureText(undefined, err.message);
     }
   }
 

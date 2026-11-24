@@ -406,7 +406,8 @@ export function startKeypad(root, host) {
     el.keyDodge.classList.toggle('on', key === 'dodge');
     el.keyTackPort.hidden = el.keyTackStbd.hidden = !can.tack;
     el.keyGybePort.hidden = el.keyGybeStbd.hidden = !can.gybe;
-    el.keyNext.hidden = !(can.nextPoint && isNavMode(key) && course && course.active && course.activeRoute);
+    // NEXT WPT whenever a route is active, whatever the pilot is doing.
+    el.keyNext.hidden = !(course && course.active && course.activeRoute);
   }
 
   // The menu is rebuilt only when the pilot's choices change, so that a
@@ -521,6 +522,32 @@ export function startKeypad(root, host) {
 
   // ---- keys ----
 
+  // A pilot that follows the route goes on to the next point itself, so that
+  // it steers for it at once; otherwise the server's course goes on.
+  async function nextPoint() {
+    const info = pilot.status === 'ok' ? pilot.info : null;
+    const key = modeKey(info);
+    if (info && isNavMode(key) && available(info).nextPoint) {
+      if (busy || standbyPending > 0) {
+        return;
+      }
+      busy = true;
+      try {
+        const failure = await pilot.send(requestsFor(info, 'nextPoint'));
+        if (failure) {
+          showInfo(failure);
+        }
+      } finally {
+        busy = false;
+      }
+      return;
+    }
+    const failure = await course.goToNextPoint();
+    if (failure) {
+      showInfo(failure);
+    }
+  }
+
   async function command(cmd) {
     if (!pilot) {
       return;
@@ -557,6 +584,10 @@ export function startKeypad(root, host) {
       return;
     }
     closeMenu();
+    if (cmd === 'nextPoint') {
+      await nextPoint();
+      return;
+    }
     if (cmd === 'standby') {
       // Whatever another key still had to send is unwanted from now on, even
       // when STBY itself cannot be sent.

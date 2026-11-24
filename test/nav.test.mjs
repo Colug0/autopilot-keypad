@@ -108,3 +108,21 @@ test('a quick change of the speed path ends with the path last chosen', async ()
   await course.setSpeed({ ...base, source: 'average', path: 'a' });
   assert.deepEqual([...active], []);
 });
+
+test('going on to the next point of the route asks the Course API', async () => {
+  const { Course } = await import('../src/course.mjs');
+  const calls = [];
+  const saved = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    calls.push([url, options.method, options.body]);
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+  try {
+    const course = new Course({ subscribe: async () => () => {} });
+    course.nextPoint = { position: { latitude: 0, longitude: 0 } };
+    assert.equal(await course.goToNextPoint(), null);
+    assert.deepEqual(calls, [['/signalk/v2/api/vessels/self/navigation/course/activeRoute/nextPoint', 'PUT', '{"value":1}']]);
+  } finally {
+    globalThis.fetch = saved;
+  }
+});

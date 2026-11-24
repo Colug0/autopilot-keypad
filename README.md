@@ -20,8 +20,9 @@ What it shows and does:
   where it is in the route, the cross track error as a highway and a number,
   and distance, time to go and arrival. A tap on that row switches between
   the next point and the end of the route. In a mode that follows a route the
-  bearing to the next point (CTS) takes the place of the target, and **NEXT
-  WPT** appears when the pilot can skip to the next point.
+  bearing to the next point (CTS) takes the place of the target. **NEXT WPT**
+  appears while a route is active: in a mode that follows the route it asks the
+  pilot (when the pilot offers it), otherwise the server's course goes on.
 - Keys laid out like a pilot keypad: `<10 <1 1> 10>` with red (port) and green
   (starboard) arrows, a red **STBY**, **AUTO**, **WIND** and **MODE** for the
   rest. **DODGE**, **TACK** and **GYBE** appear when the pilot says it can do
