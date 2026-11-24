@@ -224,3 +224,13 @@ body.webapp .ap { flex: 1; height: auto; min-height: 0; }
 .wpRow.next { box-shadow: inset 3px 0 0 var(--green); }
 .wpKeys { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .key { -webkit-touch-callout: none; }
+
+/* With the navigation block shown, the values give it room. */
+.values { overflow: hidden; }
+.display.withNav .val .num { font-size: clamp(22px, min(11vw, 10vh), 64px); }
+.display.withNav .val .label { font-size: clamp(11px, 3vh, 15px); }
+.values { min-height: 64px; }
+.withNavKeys .modebar { height: clamp(32px, 9vh, 56px); }
+.withNavKeys .key { height: clamp(30px, 8.5vh, 56px); }
+.nav .row .v { font-size: clamp(12px, min(5.2vw, 4.5vh), 22px); }
+.nav .row .v .day { font-size: .65em; font-weight: 400; color: var(--muted); margin-left: 1px; }

@@ -381,6 +381,8 @@ export function startKeypad(root, host) {
   function renderNav() {
     const show = prefs.showNav && course && course.active;
     el.nav.hidden = !show;
+    el.nav.parentElement.classList.toggle('withNav', !!show);
+    root.classList.toggle('withNavKeys', !!show);
     if (!show) {
       return;
     }
@@ -399,7 +401,12 @@ export function startKeypad(root, host) {
     el.navDistanceLabel.textContent = view.distanceLabel;
     el.navDistance.replaceChildren(document.createTextNode(view.distance.text), unitSpan(view.distance.unit));
     el.navTtg.textContent = view.ttg;
-    el.navEta.textContent = view.eta;
+    // 00:15 +1d: the day as a small mark after the time.
+    const [time, day] = view.eta.split(' ');
+    const dayMark = document.createElement('span');
+    dayMark.className = 'day';
+    dayMark.textContent = day || '';
+    el.navEta.replaceChildren(document.createTextNode(time), ...(day ? [dayMark] : []));
     const x = 120 + highwayPosition(c.crossTrackError, prefs.xteLimit) * 108;
     el.navBoat.setAttribute('transform', 'translate(' + x.toFixed(1) + ' 0)');
   }
