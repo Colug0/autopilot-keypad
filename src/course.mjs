@@ -47,6 +47,7 @@ export class Course {
     this.name = '';
     // The active route as the resources API gives it, for the waypoint list.
     this.route = null;
+    this.routeHref = null;
     this.lookup = 0;
     // How often each of activeRoute and nextPoint came as a delta, so that a
     // read that started earlier does not undo them.
@@ -118,6 +119,12 @@ export class Course {
   // The name of the next point, from the route or the waypoint resource.
   async lookUpName() {
     const lookup = ++this.lookup;
+    // Another route: the one held says nothing about it.
+    const href = this.activeRoute && this.activeRoute.href ? this.activeRoute.href : null;
+    if (href !== this.routeHref) {
+      this.route = null;
+      this.routeHref = null;
+    }
     const course = { activeRoute: this.activeRoute, nextPoint: this.nextPoint };
     let route = null;
     let waypoint = null;
@@ -132,6 +139,7 @@ export class Course {
     }
     if (lookup === this.lookup) {
       this.route = route;
+      this.routeHref = route ? href : null;
       this.name = pointName(course, route, waypoint);
       this.onChange();
     }

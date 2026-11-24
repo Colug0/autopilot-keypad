@@ -195,7 +195,15 @@ export function startKeypad(root, host) {
 
   const SETTINGS = [
     ...(host.settings || []),
-    { id: 'thirdKey', label: 'Third key', type: 'choice', choices: modeChoices, ...pref('thirdKey') },
+    {
+      id: 'thirdKey',
+      label: 'Third key',
+      type: 'choice',
+      choices: modeChoices,
+      // Shown as the key works: Wind when the chosen mode is not offered.
+      get: () => (pilot && pilot.status === 'ok' && thirdKeyMode(pilot.info, prefs.thirdKey)) || prefs.thirdKey,
+      set: (v) => setPref('thirdKey', v)
+    },
     { id: 'showNav', label: 'Show navigation', type: 'choice', choices: ON_OFF, ...pref('showNav') },
     { id: 'xteLimit', label: 'XTE limit', type: 'number', unit: 'nm', min: 0.01, step: 0.01, ...pref('xteLimit') },
     {
