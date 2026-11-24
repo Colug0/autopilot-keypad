@@ -84,3 +84,27 @@ test('the name of the next point', () => {
   assert.equal(pointName({}, null, null), 'Waypoint');
   assert.equal(pointName({ nextPoint: { name: 'Funafuti' }, activeRoute: { pointIndex: 1 } }, route), 'Funafuti');
 });
+
+test('a quick change of the speed path ends with the path last chosen', async () => {
+  const { Course } = await import('../src/course.mjs');
+  const active = new Set();
+  const host = {
+    subscribe: async (paths) => {
+      await new Promise((r) => setTimeout(r, 5));
+      paths.forEach((p) => active.add(p));
+      return async () => {
+        await new Promise((r) => setTimeout(r, 5));
+        paths.forEach((p) => active.delete(p));
+      };
+    }
+  };
+  const course = new Course(host);
+  const base = { source: 'path', minutes: 15, knots: 5 };
+  await course.setSpeed({ ...base, path: 'a' });
+  course.setSpeed({ ...base, path: 'b' });
+  await course.setSpeed({ ...base, path: 'a' });
+  assert.deepEqual([...active], ['a']);
+  assert.equal(course.subscribedPath, 'a');
+  await course.setSpeed({ ...base, source: 'average', path: 'a' });
+  assert.deepEqual([...active], []);
+});

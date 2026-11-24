@@ -134,9 +134,20 @@ export class Course {
   }
 
   // { source: 'average' | 'fixed' | 'path', minutes, knots, path }
-  async setSpeed(setting) {
+  // Changes of the path subscription run one after the other, each for the
+  // setting as it is when its turn comes, so that a quick change back and
+  // forth ends with the path last chosen.
+  setSpeed(setting) {
     this.speedSetting = setting;
     this.average.setWindow(Math.max(1, setting.minutes) * 60000);
+    this.speedQueue = (this.speedQueue || Promise.resolve())
+      .then(() => this.followSpeedPath())
+      .catch(() => {});
+    return this.speedQueue;
+  }
+
+  async followSpeedPath() {
+    const setting = this.speedSetting;
     const pathNow = setting.source === 'path' ? setting.path : null;
     // Compared with the path actually subscribed, so that a failed subscription
     // is tried again on the next call.
