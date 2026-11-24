@@ -3,11 +3,15 @@
   <rect x="9" y="10" width="54" height="21" rx="4" fill="#2e9e3c"/>
   <text x="16" y="26.5" font-family="Arial,sans-serif" font-weight="800" font-size="16" fill="#fff">A</text>
   <rect x="31" y="18" width="25" height="5" rx="2" fill="#fff"/>
-  <rect x="9" y="37" width="11.5" height="10" rx="2" fill="#d32f2f"/>
-  <rect x="23.2" y="37" width="11.5" height="10" rx="2" fill="#d32f2f"/>
-  <rect x="37.3" y="37" width="11.5" height="10" rx="2" fill="#43a047"/>
-  <rect x="51.5" y="37" width="11.5" height="10" rx="2" fill="#43a047"/>
-  <rect x="9" y="51" width="11.5" height="10" rx="2" fill="#565d64"/>
+  <rect x="9" y="37" width="11.5" height="10" rx="2" fill="#3a4046"/>
+  <rect x="23.2" y="37" width="11.5" height="10" rx="2" fill="#3a4046"/>
+  <rect x="37.3" y="37" width="11.5" height="10" rx="2" fill="#3a4046"/>
+  <rect x="51.5" y="37" width="11.5" height="10" rx="2" fill="#3a4046"/>
+  <polygon points="12.5,42 16.5,39.2 16.5,44.8" fill="#ff5a52"/>
+  <polygon points="26.7,42 30.7,39.2 30.7,44.8" fill="#ff5a52"/>
+  <polygon points="45.3,42 41.3,39.2 41.3,44.8" fill="#4cd964"/>
+  <polygon points="59.5,42 55.5,39.2 55.5,44.8" fill="#4cd964"/>
+  <rect x="9" y="51" width="11.5" height="10" rx="2" fill="#d32f2f"/>
   <rect x="23.2" y="51" width="11.5" height="10" rx="2" fill="#565d64"/>
   <rect x="37.3" y="51" width="11.5" height="10" rx="2" fill="#565d64"/>
   <rect x="51.5" y="51" width="11.5" height="10" rx="2" fill="#565d64"/>

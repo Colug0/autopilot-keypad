@@ -16,6 +16,9 @@
       --stbd: #43a047;
       --key: #565d64;
       --key-dark: #2f353a;
+      --step: #3a4046;
+      --arrow-port: #ff5a52;
+      --arrow-stbd: #4cd964;
       --track: #3a4046;
       --alarm: #e0a100;
       color-scheme: dark;
@@ -130,8 +133,11 @@
     }
     .key:active { filter: brightness(1.35); }
     .key:disabled { opacity: .35; cursor: default; filter: none; }
-    .key.port { background: var(--red); }
-    .key.stbd { background: var(--stbd); }
+    /* Step keys stay grey; only their arrows show the side. STBY stands out. */
+    .key.step { background: var(--step); }
+    .key .p { color: var(--arrow-port); }
+    .key .s { color: var(--arrow-stbd); }
+    .key.stby { background: var(--red); }
     .key.on { box-shadow: inset 0 0 0 3px var(--text); }
     .key.wide { grid-column: span 4; background: var(--key-dark); }
     .key.half { grid-column: span 2; background: var(--key-dark); }
@@ -163,19 +169,19 @@
     </section>
 
     <section class="keys">
-      <button class="key port" type="button" data-cmd="-10" aria-label="10 degrees to port">&lt;10</button>
-      <button class="key port" type="button" data-cmd="-1" aria-label="1 degree to port">&lt;1</button>
-      <button class="key stbd" type="button" data-cmd="+1" aria-label="1 degree to starboard">1&gt;</button>
-      <button class="key stbd" type="button" data-cmd="+10" aria-label="10 degrees to starboard">10&gt;</button>
-      <button class="key" type="button" data-cmd="standby" id="keyStby">STBY</button>
+      <button class="key step" type="button" data-cmd="-10" aria-label="10 degrees to port"><span class="p">&lt;</span>10</button>
+      <button class="key step" type="button" data-cmd="-1" aria-label="1 degree to port"><span class="p">&lt;</span>1</button>
+      <button class="key step" type="button" data-cmd="+1" aria-label="1 degree to starboard">1<span class="s">&gt;</span></button>
+      <button class="key step" type="button" data-cmd="+10" aria-label="10 degrees to starboard">10<span class="s">&gt;</span></button>
+      <button class="key stby" type="button" data-cmd="standby" id="keyStby">STBY</button>
       <button class="key" type="button" data-cmd="auto" id="keyAuto">AUTO</button>
       <button class="key" type="button" data-cmd="wind" id="keyWind">WIND</button>
       <button class="key" type="button" data-cmd="menu">MODE</button>
       <!-- Only shown when the pilot offers them. -->
-      <button class="key half" type="button" data-cmd="tack:port" id="keyTackPort" hidden>&lt; TACK</button>
-      <button class="key half" type="button" data-cmd="tack:starboard" id="keyTackStbd" hidden>TACK &gt;</button>
-      <button class="key half" type="button" data-cmd="gybe:port" id="keyGybePort" hidden>&lt; GYBE</button>
-      <button class="key half" type="button" data-cmd="gybe:starboard" id="keyGybeStbd" hidden>GYBE &gt;</button>
+      <button class="key half" type="button" data-cmd="tack:port" id="keyTackPort" hidden><span class="p">&lt;</span>&nbsp;TACK</button>
+      <button class="key half" type="button" data-cmd="tack:starboard" id="keyTackStbd" hidden>TACK&nbsp;<span class="s">&gt;</span></button>
+      <button class="key half" type="button" data-cmd="gybe:port" id="keyGybePort" hidden><span class="p">&lt;</span>&nbsp;GYBE</button>
+      <button class="key half" type="button" data-cmd="gybe:starboard" id="keyGybeStbd" hidden>GYBE&nbsp;<span class="s">&gt;</span></button>
       <button class="key wide" type="button" data-cmd="dodge" id="keyDodge" hidden>DODGE</button>
     </section>
   </div>
